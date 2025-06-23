@@ -2,6 +2,8 @@ use color_eyre::Result;
 use crossterm::event::{self, Event};
 use ratatui::{DefaultTerminal, Frame};
 
+mod character;
+
 fn main() -> Result<()> {
     color_eyre::install()?;
     let terminal = ratatui::init();
