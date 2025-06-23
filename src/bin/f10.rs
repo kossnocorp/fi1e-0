@@ -1,9 +1,10 @@
+use bevy::app::ScheduleRunnerPlugin;
 use bevy::prelude::*;
-use color_eyre::Result;
-use crossterm::event::{self, Event, KeyCode};
+use bevy_ratatui::{RatatuiContext, RatatuiPlugins, event::KeyEvent};
 use rand::Rng;
 use ratatui::{
-    DefaultTerminal, Frame,
+    Frame,
+    crossterm::event::KeyCode,
     layout::{Constraint, Direction, Layout},
     style::{Color, Style},
     text::{Line, Span},
@@ -15,16 +16,12 @@ use fi1e_0::character::{Character, Experience, Name};
 
 #[derive(Resource)]
 struct GameState {
-    running: bool,
     tick_count: u32,
 }
 
 impl Default for GameState {
     fn default() -> Self {
-        Self {
-            running: true,
-            tick_count: 0,
-        }
+        Self { tick_count: 0 }
     }
 }
 
@@ -46,55 +43,43 @@ fn spawn_entities(mut commands: Commands) {
     commands.spawn(Character::new("a13x".to_string(), 0));
 }
 
-fn main() -> Result<()> {
-    color_eyre::install()?;
+fn main() {
+    let frame_time = Duration::from_secs_f32(1. / 60.);
 
-    let mut app = App::new();
-    app.add_plugins(MinimalPlugins)
+    App::new()
+        .add_plugins((
+            MinimalPlugins.set(ScheduleRunnerPlugin::run_loop(frame_time)),
+            RatatuiPlugins::default(),
+        ))
         .init_resource::<GameState>()
         .add_systems(Startup, spawn_entities)
-        .add_systems(Update, update_system);
-
-    let terminal = ratatui::init();
-    let result = run(terminal, app);
-    ratatui::restore();
-    result
+        .add_systems(Update, update_system)
+        .add_systems(Update, draw_system)
+        .add_systems(Update, input_system)
+        .run();
 }
 
-fn run(mut terminal: DefaultTerminal, mut app: App) -> Result<()> {
-    loop {
-        app.update();
-
-        let game_state = app.world().resource::<GameState>();
-        let should_exit = !game_state.running;
-        let tick_count = game_state.tick_count;
-
-        let mut entities_info = Vec::new();
-        let mut query = app.world_mut().query::<(&Name, &Experience)>();
-
-        for (name, health) in query.iter(app.world()) {
-            entities_info.push(format!("{}: XP: {}", name.0, health.0));
+fn input_system(mut events: EventReader<KeyEvent>, mut exit: EventWriter<AppExit>) {
+    for event in events.read() {
+        if matches!(event.code, KeyCode::Char('q') | KeyCode::Esc) {
+            exit.write(AppExit::Success);
         }
+    }
+}
 
-        terminal.draw(|frame| render(frame, tick_count, &entities_info))?;
+fn draw_system(
+    mut context: ResMut<RatatuiContext>,
+    game_state: Res<GameState>,
+    query: Query<(&Name, &Experience)>,
+) {
+    let tick_count = game_state.tick_count;
 
-        if event::poll(Duration::from_millis(16))? {
-            if let Event::Key(key) = event::read()? {
-                match key.code {
-                    KeyCode::Char('q') | KeyCode::Esc => break,
-                    _ => {}
-                }
-            }
-        }
-
-        if should_exit {
-            break;
-        }
-
-        std::thread::sleep(Duration::from_millis(16)); // ~60 FPS
+    let mut entities_info = Vec::new();
+    for (name, experience) in query.iter() {
+        entities_info.push(format!("{}: XP: {}", name.0, experience.0));
     }
 
-    Ok(())
+    let _ = context.draw(|frame| render(frame, tick_count, &entities_info));
 }
 
 fn render(frame: &mut Frame, tick_count: u32, entities_info: &[String]) {
