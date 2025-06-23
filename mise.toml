@@ -1,0 +1,14 @@
+[tools]
+# Shell
+starship = "latest"
+# Stack
+rust = "latest"
+# Tools
+cargo-binstall = "latest"
+"cargo:just" = "latest"
+"cargo:https://github.com/tekumara/typos-lsp" = "latest"
+
+[settings]
+experimental = true
+cargo.binstall = true
+idiomatic_version_file_enable_tools = ["rust"]

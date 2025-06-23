@@ -1,0 +1,1 @@
+FROM kossnocorp/dev-rust:latest
