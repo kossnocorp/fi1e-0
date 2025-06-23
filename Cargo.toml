@@ -3,7 +3,12 @@ name = "fi1e-0"
 version = "0.1.0"
 edition = "2024"
 
+[[bin]]
+name = "f10"
+
 [dependencies]
+bevy = { version = "0.16.1", default-features = false }
 color-eyre = "0.6.5"
 crossterm = "0.29.0"
+rand = "0.8"
 ratatui = "0.29.0"
